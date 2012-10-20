@@ -1,5 +1,9 @@
 choice
 	prompt "Machine type"
 	depends on MACH_JZ4750D
+	default JZ4750D_RZX50
+
+config JZ4750D_RZX50
+	bool "Ritmix RZX-50"
 
 endchoice
