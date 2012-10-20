@@ -1,0 +1,5 @@
+choice
+	prompt "Machine type"
+	depends on MACH_JZ4750D
+
+endchoice
