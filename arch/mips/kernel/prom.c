@@ -28,7 +28,7 @@ __init void mips_set_machine_name(const char *name)
 		return;
 
 	strlcpy(mips_machine_name, name, sizeof(mips_machine_name));
-	pr_info("MIPS: machine is %s\n", mips_get_machine_name());
+	pr_err("MIPS: machine is %s\n", mips_get_machine_name());
 }
 
 char *mips_get_machine_name(void)

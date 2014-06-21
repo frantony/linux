@@ -16,6 +16,7 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include <linux/of_fdt.h>
 
 #include <asm/bootinfo.h>
 
@@ -27,9 +28,31 @@ void __init plat_mem_setup(void)
 
 	/* FIXME: the detection of the memory size is skipped */
 	add_memory_region(0, 0x04000000 /* 64 M */, BOOT_MEM_RAM);
+
+	/*
+	 * Load the builtin devicetree. This causes the chosen node to be
+	 * parsed resulting in our memory appearing
+	 */
+	__dt_setup_arch(&__dtb_start);
 }
 
 const char *get_system_type(void)
 {
 	return "JZ4750D";
+}
+
+void __init device_tree_init(void)
+{
+	unsigned long base, size;
+
+	if (!initial_boot_params)
+		return;
+
+	base = virt_to_phys((void *)initial_boot_params);
+	size = be32_to_cpu(initial_boot_params->totalsize);
+
+	/* Before we do anything, lets reserve the dt blob */
+	reserve_bootmem(base, size, BOOTMEM_DEFAULT);
+
+	unflatten_device_tree();
 }
