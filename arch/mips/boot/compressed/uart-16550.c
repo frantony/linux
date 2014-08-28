@@ -22,6 +22,11 @@
 #define PORT(offset) (CKSEG1ADDR(JZ4740_UART0_BASE_ADDR) + (4 * offset))
 #endif
 
+#ifdef CONFIG_JZ4750D_RZX50
+#include <asm/mach-jz4750d/base.h>
+#define PORT(offset) (CKSEG1ADDR(JZ4750D_UART1_BASE_ADDR) + (4 * offset))
+#endif
+
 #ifdef CONFIG_CPU_XLR
 #define UART0_BASE  0x1EF14000
 #define PORT(offset) (CKSEG1ADDR(UART0_BASE) + (4 * offset))
