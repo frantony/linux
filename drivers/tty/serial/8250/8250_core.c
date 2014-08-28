@@ -325,10 +325,8 @@ static const struct serial8250_config uart_config[] = {
 	},
 	[PORT_INGENIC_JZ] = {
 		.name		= "Ingenic JZ UART",
-		.fifo_size	= 64,
-		.tx_loadsz	= 32,
-		.fcr		= UART_FCR_ENABLE_FIFO | UART_FCR_R_TRIG_10,
-		.flags		= UART_CAP_FIFO | UART_CAP_RTOIE,
+		.fifo_size	= 1,
+		.tx_loadsz	= 1,
 	},
 };
 
