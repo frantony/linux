@@ -33,11 +33,11 @@
 /* Serial */
 #define JZ4750D_UART_DATA(_id) \
 	{ \
-		.flags = UPF_SKIP_TEST | UPF_IOREMAP | UPF_FIXED_TYPE, \
+		.flags = (UPF_SKIP_TEST | UPF_IOREMAP | UPF_FIXED_TYPE \
+			/* | UPF_BOOT_AUTOCONF */), \
 		.iotype = UPIO_MEM, \
 		.regshift = 2, \
-		.serial_out = jz4750d_serial_out, \
-		.type = PORT_16550, \
+		.type = PORT_INGENIC_JZ, \
 		.mapbase = JZ4750D_UART ## _id ## _BASE_ADDR, \
 		.irq = JZ4750D_IRQ_UART ## _id, \
 	}
