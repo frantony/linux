@@ -27,9 +27,6 @@
 #include <linux/serial_core.h>
 #include <linux/serial_8250.h>
 
-#include "serial.h"
-#include "clock.h"
-
 /* Serial */
 #define JZ4750D_UART_DATA(_id) \
 	{ \
@@ -40,6 +37,7 @@
 		.type = PORT_INGENIC_JZ, \
 		.mapbase = JZ4750D_UART ## _id ## _BASE_ADDR, \
 		.irq = JZ4750D_IRQ_UART ## _id, \
+		.uartclk = 12000000 \
 	}
 
 static struct plat_serial8250_port jz4750d_uart_data[] = {
@@ -56,29 +54,7 @@ static struct platform_device jz4750d_uart_device = {
 	},
 };
 
-#define JZ_REG_CLOCK_CTRL	0x00
-#define JZ_CLOCK_CTRL_KO_ENABLE	BIT(30)
-
 void jz4750d_serial_device_register(void)
 {
-	void __iomem *cpm_base = ioremap(JZ4750D_CPM_BASE_ADDR, 0x100);
-	struct plat_serial8250_port *p;
-	int uart_rate;
-
-	uart_rate = jz4750d_clock_bdata.ext_rate;
-
-	/*
-	 * FIXME
-	 * ECS bit selects the clock source between EXCLK and EXCLK/2 output
-	 * This bit is only used to APB device such as UART I2S I2C SSI SADC UDC_PHY etc.
-	 */
-
-	if (readl(cpm_base + JZ_REG_CLOCK_CTRL) & JZ_CLOCK_CTRL_KO_ENABLE) {
-		uart_rate >>= 1;
-	}
-
-	for (p = jz4750d_uart_data; p->flags != 0; ++p)
-		p->uartclk = uart_rate;
-
 	platform_device_register(&jz4750d_uart_device);
 }

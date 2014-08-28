@@ -20,7 +20,6 @@
 
 #include <asm/time.h>
 
-#include "clock.h"
 #include "timer.h"
 
 #define TIMER_CLOCKEVENT 5
@@ -107,7 +106,7 @@ void __init plat_time_init(void)
 
 	jz4750d_timer_init();
 
-	clk_rate = jz4750d_clock_bdata.ext_rate >> 4;
+	clk_rate = 24000000 >> 4;
 	jz4750d_jiffies_per_tick = DIV_ROUND_CLOSEST(clk_rate, HZ);
 
 	clockevent_set_clock(&jz4750d_clockevent, clk_rate);
