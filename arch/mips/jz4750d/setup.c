@@ -15,10 +15,18 @@
 
 #include <linux/init.h>
 #include <linux/io.h>
+#include <linux/bootmem.h>
 #include <linux/kernel.h>
 #include <linux/of_fdt.h>
 
+#include <linux/clk-provider.h>
+#include <linux/clocksource.h>
+#include <linux/of.h>
+#include <linux/of_fdt.h>
+#include <linux/of_platform.h>
+
 #include <asm/bootinfo.h>
+#include <asm/prom.h>
 
 #include "reset.h"
 
@@ -33,7 +41,8 @@ void __init plat_mem_setup(void)
 	 * Load the builtin devicetree. This causes the chosen node to be
 	 * parsed resulting in our memory appearing
 	 */
-	__dt_setup_arch(&__dtb_start);
+//	__dt_setup_arch(&__dtb_start);
+	__dt_setup_arch(__dtb_start);
 }
 
 const char *get_system_type(void)
@@ -41,6 +50,7 @@ const char *get_system_type(void)
 	return "JZ4750D";
 }
 
+#if 0
 void __init device_tree_init(void)
 {
 	unsigned long base, size;
@@ -55,4 +65,13 @@ void __init device_tree_init(void)
 	reserve_bootmem(base, size, BOOTMEM_DEFAULT);
 
 	unflatten_device_tree();
+}
+#endif
+
+void __init device_tree_init(void)
+{
+	if (!initial_boot_params)
+		return;
+
+	unflatten_and_copy_device_tree();
 }
