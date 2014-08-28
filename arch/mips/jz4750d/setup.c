@@ -34,15 +34,12 @@ void __init plat_mem_setup(void)
 {
 	jz4750d_reset_init();
 
-	/* FIXME: the detection of the memory size is skipped */
-	add_memory_region(0, 0x04000000 /* 64 M */, BOOT_MEM_RAM);
-
-	/*
-	 * Load the builtin devicetree. This causes the chosen node to be
-	 * parsed resulting in our memory appearing
-	 */
-//	__dt_setup_arch(&__dtb_start);
 	__dt_setup_arch(__dtb_start);
+}
+
+void __init device_tree_init(void)
+{
+	unflatten_and_copy_device_tree();
 }
 
 const char *get_system_type(void)
@@ -50,28 +47,13 @@ const char *get_system_type(void)
 	return "JZ4750D";
 }
 
-#if 0
-void __init device_tree_init(void)
+static struct of_device_id __initdata jz4780_ids[] = {
+	{ .compatible = "simple-bus", },
+	{},
+};
+
+int __init jz4780_publish_devices(void)
 {
-	unsigned long base, size;
-
-	if (!initial_boot_params)
-		return;
-
-	base = virt_to_phys((void *)initial_boot_params);
-	size = be32_to_cpu(initial_boot_params->totalsize);
-
-	/* Before we do anything, lets reserve the dt blob */
-	reserve_bootmem(base, size, BOOTMEM_DEFAULT);
-
-	unflatten_device_tree();
+	return of_platform_bus_probe(NULL, jz4780_ids, NULL);
 }
-#endif
-
-void __init device_tree_init(void)
-{
-	if (!initial_boot_params)
-		return;
-
-	unflatten_and_copy_device_tree();
-}
+device_initcall(jz4780_publish_devices);

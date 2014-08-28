@@ -46,7 +46,7 @@
 			};
 
 			intc: intc@10001000 {
-				compatible = "ingenic,jz4780-intc";
+				compatible = "ingenic,jz4755-intc";
 				reg = <0x10001000 0x50>;
 
 				interrupt-controller;
@@ -54,6 +54,14 @@
 
 				interrupt-parent = <&cpuintc>;
 				interrupts = <2>;
+			};
+
+			tcu@0x10002000 {
+				compatible = "ingenic,jz4755-tcu";
+				reg = <0x10002000 0x140>;
+
+				interrupt-parent = <&intc>;
+				interrupts = <27 26 25>;
 			};
 
 			serial1: serial@10031000 {

@@ -22,6 +22,12 @@
 
 #include "timer.h"
 
+#include <linux/bootmem.h>
+#include <linux/clk-provider.h>
+#include <linux/clocksource.h>
+#include <linux/of.h>
+#include <linux/of_fdt.h>
+#include <linux/of_platform.h>
 #define TIMER_CLOCKEVENT 5
 
 static uint16_t jz4750d_jiffies_per_tick;
@@ -141,4 +147,7 @@ void __init plat_time_init(void)
 	jz4750d_timer_start(TIMER_CLOCKEVENT);
 	jz4750d_ostimer_enable();
 	jz4750d_ostimer_start();
+
+	of_clk_init(NULL);
+	clocksource_of_init();
 }
