@@ -1,0 +1,88 @@
+//#include <dt-bindings/clock/jz4755-cgu.h>
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+	clocks {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <>;
+
+		extal: extal {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-output-names = "extal";
+		};
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges = <>;
+
+		cpus {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			cpu0: cpu@0 {
+				compatible = "ingenic,xburst";
+				reg = <0>;
+			};
+		};
+
+		cpuintc: cpuintc@0 {
+			#address-cells = <0>;
+			#interrupt-cells = <1>;
+			interrupt-controller;
+			compatible = "mti,cpu-interrupt-controller";
+		};
+
+		apb {
+			compatible = "simple-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges = <>;
+
+			uart_tmp_clk: clock@2 {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <12000000>;
+			};
+
+			intc: intc@10001000 {
+				compatible = "ingenic,jz4755-intc";
+				reg = <0x10001000 0x50>;
+
+				interrupt-controller;
+				#interrupt-cells = <1>;
+
+				interrupt-parent = <&cpuintc>;
+				interrupts = <2>;
+			};
+
+			tcu@0x10002000 {
+				compatible = "ingenic,jz4755-tcu";
+				reg = <0x10002000 0x140>;
+
+				interrupt-parent = <&intc>;
+				interrupts = <27 26 25>;
+			};
+
+			serial1: serial@10031000 {
+				compatible = "ingenic,jz4740-uart";
+				reg = <0x10031000 0x20>;
+				reg-shift = <2>;
+
+				interrupt-parent = <&intc>;
+				interrupts = <51>;
+
+				clocks = <&uart_tmp_clk 0>;
+
+				status = "okay";
+			};
+		};
+	};
+
+};
