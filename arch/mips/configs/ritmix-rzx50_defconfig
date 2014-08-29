@@ -44,6 +44,7 @@ CONFIG_TMPFS=y
 CONFIG_DEBUG_FS=y
 # CONFIG_FTRACE is not set
 CONFIG_CMDLINE_BOOL=y
-CONFIG_CMDLINE="mem=64M root=/dev/loop0 ro rdinit=/bin/sh console=ttyS1,57600 panic=3"
+CONFIG_CMDLINE="rdinit=/bin/sh console=ttyS1,57600"
 CONFIG_CMDLINE_OVERRIDE=y
+CONFIG_DEBUG_ZBOOT=y
 CONFIG_CRYPTO=y
