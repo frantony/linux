@@ -71,9 +71,12 @@ static void jz4750d_power_off(void)
 	jz4750d_halt();
 }
 
-void jz4750d_reset_init(void)
+static int __init jz4750d_reset_init(void)
 {
 	_machine_restart = jz4750d_restart;
 	_machine_halt = jz4750d_halt;
 	pm_power_off = jz4750d_power_off;
+
+	return 0;
 }
+arch_initcall(jz4750d_reset_init);

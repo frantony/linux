@@ -28,12 +28,8 @@
 #include <asm/bootinfo.h>
 #include <asm/prom.h>
 
-#include "reset.h"
-
 void __init plat_mem_setup(void)
 {
-	jz4750d_reset_init();
-
 	__dt_setup_arch(__dtb_start);
 }
 
