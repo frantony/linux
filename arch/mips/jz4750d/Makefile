@@ -2,13 +2,12 @@
 # Makefile for the Ingenic JZ4750D.
 #
 
-CFLAGS_platform.o = -I$(src)/../../../scripts/dtc/libfdt
-CFLAGS_setup.o = -I$(src)/../../../scripts/dtc/libfdt
-
-# Object file lists.
-
-obj-y += prom.o irq.o time.o reset.o setup.o
-obj-y += platform.o timer.o
+obj-y += prom.o
+obj-y += irq.o
+obj-y += time.o
+obj-y += reset.o
+obj-y += setup.o
+obj-y += timer.o
 
 # board specific support
 obj-$(CONFIG_JZ4750D_RZX50)	+= board-rzx50.o
