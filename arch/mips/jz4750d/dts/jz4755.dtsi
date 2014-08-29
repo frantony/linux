@@ -9,10 +9,18 @@
 		#size-cells = <1>;
 		ranges = <>;
 
+		/* ostimer uses extal too */
 		extal: extal {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
 			clock-output-names = "extal";
+		};
+
+		uartclk: uartclk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <12000000>;
+			clock-output-names = "uartclk";
 		};
 	};
 
@@ -77,6 +85,20 @@
 
 				interrupt-parent = <&intc>;
 				interrupts = <51>;
+
+				clocks = <&uart_tmp_clk 0>;
+
+				/* status = "okay"; */
+				status = "disabled";
+			};
+
+			serial2: serial@10032000 {
+				compatible = "ingenic,jz4740-uart";
+				reg = <0x10032000 0x20>;
+				reg-shift = <2>;
+
+				interrupt-parent = <&intc>;
+				interrupts = <50>;
 
 				clocks = <&uart_tmp_clk 0>;
 
