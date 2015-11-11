@@ -125,6 +125,18 @@ config PHY_RCAR_GEN3_USB2
 	help
 	  Support for USB 2.0 PHY found on Renesas R-Car generation 3 SoCs.
 
+config PHY_SIMPLE
+	tristate
+	select GENERIC_PHY
+	help
+
+config PHY_SIMPLE_PDEV
+	tristate "Simple PHY driver"
+	select PHY_SIMPLE
+	help
+	  A PHY driver for simple devices that only need a regulator, clock
+	  and reset for power up and shutdown.
+
 config OMAP_CONTROL_PHY
 	tristate "OMAP CONTROL PHY Driver"
 	depends on ARCH_OMAP2PLUS || COMPILE_TEST
