@@ -16,6 +16,7 @@
 #include <linux/string.h>
 
 #include <asm/addrspace.h>
+#include <asm/byteorder.h>
 
 /*
  * These two variables specify the free mem region
@@ -26,6 +27,7 @@ unsigned long free_mem_end_ptr;
 
 /* The linker tells us where the image is. */
 extern unsigned char __image_begin, __image_end;
+extern u32 __appended_dtb[];
 
 /* debug interfaces  */
 #ifdef CONFIG_DEBUG_ZBOOT
@@ -113,6 +115,19 @@ void decompress_kernel(unsigned long boot_heap_start)
 	/* Decompress the kernel with according algorithm */
 	__decompress((char *)zimage_start, zimage_size, 0, 0,
 		   (void *)VMLINUX_LOAD_ADDRESS_ULL, 0, 0, error);
+
+#ifdef CONFIG_MIPS_ZBOOT_APPENDED_DTB
+	if (*__appended_dtb == cpu_to_be32(0xd00dfeed)) {
+		puts("Copying DTB from ");
+		puthex((unsigned long)__appended_dtb);
+		puts(" to ");
+		puthex(VMLINUX_LOAD_ADDRESS_ULL + VMLINUX_SIZE);
+		puts("\n");
+
+		memcpy((void *)VMLINUX_LOAD_ADDRESS_ULL + VMLINUX_SIZE,
+			__appended_dtb, 0x100000);
+	}
+#endif
 
 	/* FIXME: should we flush cache here? */
 	puts("Now, booting the kernel...\n");

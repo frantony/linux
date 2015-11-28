@@ -50,6 +50,8 @@ int main(int argc, char *argv[])
 	 */
 
 	vmlinuz_load_addr += (16 - vmlinux_size % 16);
+	/* Leave the space needed for appended DTB */
+	vmlinuz_load_addr += 0x100000;
 
 	printf("0x%llx\n", vmlinuz_load_addr);
 

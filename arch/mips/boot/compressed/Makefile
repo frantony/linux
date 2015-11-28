@@ -32,6 +32,14 @@ KBUILD_AFLAGS := $(LINUXINCLUDE) $(KBUILD_AFLAGS) -D__ASSEMBLY__ \
 # decompressor objects (linked with vmlinuz)
 vmlinuzobjs-y := $(obj)/head.o $(obj)/decompress.o $(obj)/string.o
 
+# Pass the size of the decompressed kernel to the decompressor
+# This is needed to move appended DTB at the right spot.
+# We only set this for decompress.o to minimize the number of
+# dependencies on $(obj)/vmlinux.bin.
+VMLINUX_SIZE = $(shell stat -c "%s" $(obj)/vmlinux.bin)
+$(obj)/decompress.o: KBUILD_CFLAGS += -D"VMLINUX_SIZE=$(VMLINUX_SIZE)"
+$(obj)/decompress.o: $(obj)/vmlinux.bin
+
 ifdef CONFIG_DEBUG_ZBOOT
 vmlinuzobjs-$(CONFIG_DEBUG_ZBOOT)		   += $(obj)/dbg.o
 vmlinuzobjs-$(CONFIG_SYS_SUPPORTS_ZBOOT_UART16550) += $(obj)/uart-16550.o

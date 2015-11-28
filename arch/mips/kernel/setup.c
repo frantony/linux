@@ -26,6 +26,7 @@
 #include <linux/sizes.h>
 #include <linux/device.h>
 #include <linux/dma-contiguous.h>
+#include <linux/libfdt.h>
 
 #include <asm/addrspace.h>
 #include <asm/bootinfo.h>
@@ -41,6 +42,8 @@
 
 #ifdef CONFIG_MIPS_ELF_APPENDED_DTB
 const char __section(.appended_dtb) __appended_dtb[0x100000];
+#else
+extern char __appended_dtb[];
 #endif /* CONFIG_MIPS_ELF_APPENDED_DTB */
 
 struct cpuinfo_mips cpu_data[NR_CPUS] __read_mostly;
@@ -781,11 +784,32 @@ static void __init prefill_possible_map(void)
 static inline void prefill_possible_map(void) {}
 #endif
 
+#if defined(CONFIG_MIPS_ELF_APPENDED_DTB) || \
+	defined(CONFIG_MIPS_RAW_APPENDED_DTB) || \
+	defined(CONFIG_MIPS_ZBOOT_APPENDED_DTB)
+static void __init appended_dtb_init(void)
+{
+	/* If there is an appended DTB pass it using the UHI boot
+	 * protocol. This is run after the PROM init to allow the
+	 * PROM code to get the bootloader arguments before we overwrite
+	 * fw_arg0 and fw_arg1.
+	 */
+	if (fw_arg0 >= 0 && !fdt_check_header(__appended_dtb)) {
+		pr_info("Found appended DTB at %p\n", __appended_dtb);
+		fw_arg0 = -2;
+		fw_arg1 = (unsigned long)__appended_dtb;
+	}
+}
+#else
+static inline void appended_dtb_init(void) {}
+#endif
+
 void __init setup_arch(char **cmdline_p)
 {
 	cpu_probe();
 	mips_cm_probe();
 	prom_init();
+	appended_dtb_init();
 
 	setup_early_fdc_console();
 #ifdef CONFIG_EARLY_PRINTK
