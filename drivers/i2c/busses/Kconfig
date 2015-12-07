@@ -810,6 +810,10 @@ config I2C_RALINK
 	tristate "Ralink I2C Controller"
 	select OF_I2C
 
+config I2C_MT7621
+	tristate "MT7621 I2C Controller"
+	select OF_I2C
+
 config HAVE_S3C2410_I2C
 	bool
 	help
