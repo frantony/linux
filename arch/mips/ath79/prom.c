@@ -154,6 +154,8 @@ void __init prom_init(void)
 	const char *env;
 	char **envp;
 
+	return;
+
 	if (ath79_prom_init_myloader())
 		return;
 
