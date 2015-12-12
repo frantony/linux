@@ -35,6 +35,7 @@ vmlinuzobjs-y := $(obj)/head.o $(obj)/decompress.o $(obj)/string.o $(obj)/dbg.o
 ifdef CONFIG_DEBUG_ZBOOT
 vmlinuzobjs-$(CONFIG_SYS_SUPPORTS_ZBOOT_UART16550) += $(obj)/uart-16550.o
 vmlinuzobjs-$(CONFIG_MIPS_ALCHEMY)		   += $(obj)/uart-alchemy.o
+vmlinuzobjs-$(CONFIG_SYS_SUPPORTS_ZBOOT_AR9331)	   += $(obj)/uart-ar9331.o
 endif
 
 ifdef CONFIG_KERNEL_XZ
@@ -69,8 +70,9 @@ hostprogs-y := calc_vmlinuz_load_addr
 ifeq ($(CONFIG_MACH_JZ4740),y)
 VMLINUZ_LOAD_ADDRESS := 0x80600000
 else
-VMLINUZ_LOAD_ADDRESS = $(shell $(obj)/calc_vmlinuz_load_addr \
-		$(obj)/vmlinux.bin $(VMLINUX_LOAD_ADDRESS))
+VMLINUZ_LOAD_ADDRESS := 0x80600000
+#VMLINUZ_LOAD_ADDRESS = $(shell $(obj)/calc_vmlinuz_load_addr \
+#		$(obj)/vmlinux.bin $(VMLINUX_LOAD_ADDRESS))
 endif
 
 vmlinuzobjs-y += $(obj)/piggy.o
