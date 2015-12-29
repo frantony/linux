@@ -41,7 +41,7 @@ vmlinuzobjs-$(CONFIG_MIPS_ALCHEMY)		   += $(obj)/uart-alchemy.o
 endif
 
 ifdef CONFIG_KERNEL_XZ
-vmlinuzobjs-y += $(obj)/../../lib/ashldi3.o
+vmlinuzobjs-y += $(obj)/../../lib/ashldi3.o $(obj)/../../lib/bswapsi.o
 endif
 
 targets += vmlinux.bin
