@@ -760,6 +760,26 @@ config ATH79_MACH_ONION_OMEGA
 	select ATH79_DEV_USB
 	select ATH79_DEV_WMAC
 
+config ATH79_MACH_MR12
+	bool "Meraki MR12 board support"
+	select SOC_AR724X
+	select ATH79_DEV_AP9X_PCI if PCI
+	select ATH79_DEV_ETH
+	select ATH79_DEV_GPIO_BUTTONS
+	select ATH79_DEV_LEDS_GPIO
+	select ATH79_DEV_M25P80
+	select ATH79_DEV_WMAC
+
+config ATH79_MACH_MR16
+	bool "Meraki MR16 board support"
+	select SOC_AR71XX
+	select ATH79_DEV_AP9X_PCI if PCI
+	select ATH79_DEV_ETH
+	select ATH79_DEV_GPIO_BUTTONS
+	select ATH79_DEV_LEDS_GPIO
+	select ATH79_DEV_M25P80
+	select ATH79_DEV_WMAC
+
 config ATH79_MACH_MR600
 	bool "OpenMesh MR600 board support"
 	select SOC_AR934X
