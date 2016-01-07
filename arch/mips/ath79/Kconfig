@@ -26,29 +26,42 @@ config ATH79_MACH_AP136
 	  Say 'Y' here if you want your kernel to support the
 	  Atheros AP136 reference board.
 
-config ATH79_MACH_AP81
-	bool "Atheros AP81 reference board"
-	select SOC_AR913X
-	select ATH79_DEV_GPIO_BUTTONS
-	select ATH79_DEV_LEDS_GPIO
-	select ATH79_DEV_SPI
-	select ATH79_DEV_USB
-	select ATH79_DEV_WMAC
-	help
-	  Say 'Y' here if you want your kernel to support the
-	  Atheros AP81 reference board.
-
 config ATH79_MACH_DB120
 	bool "Atheros DB120 reference board"
 	select SOC_AR934X
 	select ATH79_DEV_GPIO_BUTTONS
 	select ATH79_DEV_LEDS_GPIO
 	select ATH79_DEV_SPI
+
+config ATH79_MACH_DRAGINO2
+	bool "DRAGINO V2 support"
+	select SOC_AR933X
+	select ATH79_DEV_M25P80
+	select ATH79_DEV_GPIO_BUTTONS
+	select ATH79_DEV_LEDS_GPIO
+	select ATH79_DEV_WMAC
+	select ATH79_DEV_ETH
+	select ATH79_DEV_USB
+
+config ATH79_MACH_ONION_OMEGA
+	bool "ONION OMEGA support"
+	select SOC_AR933X
+	select ATH79_DEV_ETH
+	select ATH79_DEV_GPIO_BUTTONS
+	select ATH79_DEV_LEDS_GPIO
+	select ATH79_DEV_M25P80
 	select ATH79_DEV_USB
 	select ATH79_DEV_WMAC
-	help
-	  Say 'Y' here if you want your kernel to support the
-	  Atheros DB120 reference board.
+
+config ATH79_MACH_TL_MR3020
+	bool "TP-LINK TL-MR3020 support"
+	select SOC_AR933X
+	select ATH79_DEV_ETH
+	select ATH79_DEV_GPIO_BUTTONS
+	select ATH79_DEV_LEDS_GPIO
+	select ATH79_DEV_M25P80
+	select ATH79_DEV_USB
+	select ATH79_DEV_WMAC
 
 config ATH79_MACH_PB44
 	bool "Atheros PB44 reference board"
@@ -61,6 +74,17 @@ config ATH79_MACH_PB44
 	  Say 'Y' here if you want your kernel to support the
 	  Atheros PB44 reference board.
 
+config ATH79_MACH_TL_WR741ND_V4
+	bool "TP-LINK TL-WR741ND v4/TL-MR3220 v2 support"
+	select SOC_AR933X
+	select ATH79_DEV_ETH
+	select ATH79_DEV_GPIO_BUTTONS
+	select ATH79_DEV_LEDS_GPIO
+	select ATH79_DEV_M25P80
+	select ATH79_DEV_USB
+	select ATH79_DEV_WMAC
+
+
 config ATH79_MACH_UBNT_XM
 	bool "Ubiquiti Networks XM (rev 1.0) board"
 	select SOC_AR724X
@@ -70,6 +94,15 @@ config ATH79_MACH_UBNT_XM
 	help
 	  Say 'Y' here if you want your kernel to support the
 	  Ubiquiti Networks XM (rev 1.0) board.
+
+config ATH79_MACH_WEIO
+	bool "WeIO board"
+	select SOC_AR933X
+	select ATH79_DEV_GPIO_BUTTONS
+	select ATH79_DEV_LEDS_GPIO
+	select ATH79_DEV_M25P80
+	select ATH79_DEV_USB
+	select ATH79_DEV_WMAC
 
 endmenu
 
@@ -112,7 +145,10 @@ config ATH79_DEV_DSA
 config ATH79_DEV_ETH
 	def_bool n
 
-config PCI_AR724X
+config ATH79_DEV_DSA
+	def_bool n
+
+config ATH79_DEV_ETH
 	def_bool n
 
 config ATH79_DEV_GPIO_BUTTONS
@@ -142,6 +178,11 @@ config ATH79_PCI_ATH9K_FIXUP
 	def_bool n
 
 config ATH79_ROUTERBOOT
+	select RLE_DECOMPRESS
+	select LZO_DECOMPRESS
+	def_bool n
+
+config PCI_AR724X
 	def_bool n
 
 endif
