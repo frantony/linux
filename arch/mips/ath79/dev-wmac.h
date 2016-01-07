@@ -14,5 +14,7 @@
 
 void ath79_register_wmac(u8 *cal_data, u8 *mac_addr);
 void ath79_register_wmac_simple(void);
+void ath79_wmac_disable_2ghz(void);
+void ath79_wmac_disable_5ghz(void);
 
 #endif /* _ATH79_DEV_WMAC_H */
