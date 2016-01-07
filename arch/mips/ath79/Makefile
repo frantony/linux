@@ -41,6 +41,7 @@ obj-$(CONFIG_ATH79_ROUTERBOOT)		+= routerboot.o
 obj-$(CONFIG_ATH79_MACH_AP121)		+= mach-ap121.o
 obj-$(CONFIG_ATH79_MACH_AP136)		+= mach-ap136.o
 obj-$(CONFIG_ATH79_MACH_AP81)		+= mach-ap81.o
+obj-$(CONFIG_ATH79_MACH_BSB)		+= mach-bsb.o
 obj-$(CONFIG_ATH79_MACH_DB120)		+= mach-db120.o
 obj-$(CONFIG_ATH79_MACH_DRAGINO2)	+= mach-dragino2.o
 obj-$(CONFIG_ATH79_MACH_ONION_OMEGA)	+= mach-onion-omega.o

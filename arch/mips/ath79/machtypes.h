@@ -19,6 +19,7 @@ enum ath79_mach_type {
 	ATH79_MACH_AP121,		/* Atheros AP121 reference board */
 	ATH79_MACH_AP136_010,		/* Atheros AP136-010 reference board */
 	ATH79_MACH_AP81,		/* Atheros AP81 reference board */
+	ATH79_MACH_BSB,			/* Smart Electronics Black Swift board */
 	ATH79_MACH_CARAMBOLA2,		/* 8devices Carambola2 */
 	ATH79_MACH_DB120,		/* Atheros DB120 reference board */
 	ATH79_MACH_PB44,		/* Atheros PB44 reference board */
