@@ -79,8 +79,12 @@ hostprogs-y := calc_vmlinuz_load_addr
 ifneq ($(zload-y),)
 VMLINUZ_LOAD_ADDRESS := $(zload-y)
 else
+ifeq ($(CONFIG_ATH79),y)
+VMLINUZ_LOAD_ADDRESS := 0x80600000
+else
 VMLINUZ_LOAD_ADDRESS = $(shell $(obj)/calc_vmlinuz_load_addr \
 		$(obj)/vmlinux.bin $(VMLINUX_LOAD_ADDRESS))
+endif
 endif
 
 vmlinuzobjs-y += $(obj)/piggy.o
