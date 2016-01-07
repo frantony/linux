@@ -18,6 +18,7 @@ struct ath79_spi_platform_data {
 
 struct ath79_spi_controller_data {
 	unsigned	gpio;
+	bool is_flash;
 };
 
 #endif /* _ATH79_SPI_PLATFORM_H */
