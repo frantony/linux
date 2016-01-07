@@ -176,6 +176,18 @@ static void __init ath79_detect_sys_type(void)
 		rev = id & QCA955X_REV_ID_REVISION_MASK;
 		break;
 
+	case REV_ID_MAJOR_TP9343:
+		ath79_soc = ATH79_SOC_TP9343;
+		chip = "9343";
+		rev = id & QCA956X_REV_ID_REVISION_MASK;
+		break;
+
+	case REV_ID_MAJOR_QCA9561:
+		ath79_soc = ATH79_SOC_QCA9561;
+		chip = "9561";
+		rev = id & QCA956X_REV_ID_REVISION_MASK;
+		break;
+
 	default:
 		panic("ath79: unknown SoC, id:0x%08x", id);
 	}
@@ -183,9 +195,12 @@ static void __init ath79_detect_sys_type(void)
 	if (ver == 1)
 		ath79_soc_rev = rev;
 
-	if (soc_is_qca953x() || soc_is_qca955x())
+	if (soc_is_qca953x() || soc_is_qca955x() || soc_is_qca9561())
 		sprintf(ath79_sys_type, "Qualcomm Atheros QCA%s ver %u rev %u",
 			chip, ver, rev);
+	else if (soc_is_tp9343())
+		sprintf(ath79_sys_type, "Qualcomm Atheros TP%s rev %u",
+			chip, rev);
 	else
 		sprintf(ath79_sys_type, "Atheros AR%s rev %u", chip, rev);
 	pr_info("SoC: %s\n", ath79_sys_type);
