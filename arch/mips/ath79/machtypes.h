@@ -71,6 +71,8 @@ enum ath79_mach_type {
 	ATH79_MACH_JA76PF2,		/* jjPlus JA76PF2 */
 	ATH79_MACH_JWAP003,		/* jjPlus JWAP003 */
 	ATH79_MACH_HORNET_UB,		/* ALFA Networks Hornet-UB */
+	ATH79_MACH_MR12,		/* Cisco Meraki MR12 */
+	ATH79_MACH_MR16,		/* Cisco Meraki MR16 */
 	ATH79_MACH_MR600V2,		/* OpenMesh MR600v2 */
 	ATH79_MACH_MR600,		/* OpenMesh MR600 */
 	ATH79_MACH_MR900,		/* OpenMesh MR900 */
