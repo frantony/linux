@@ -635,6 +635,16 @@ config ATH79_MACH_RB91X
 	select ATH79_DEV_USB
 	select ATH79_ROUTERBOOT
 
+config ATH79_MACH_RB922
+	bool "MikroTik RouterBOARD 922 support"
+	select SOC_QCA955X
+	select ATH79_DEV_ETH
+	select ATH79_DEV_M25P80
+	select ATH79_DEV_NFC
+	select ATH79_DEV_USB
+	select ATH79_ROUTERBOOT
+	select RLE_DECOMPRESS
+
 config ATH79_MACH_RB95X
        bool "MikroTik RouterBOARD 95X support"
        select SOC_AR934X

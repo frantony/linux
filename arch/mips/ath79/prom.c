@@ -184,7 +184,8 @@ void __init prom_init(void)
 	if (strstr(arcs_cmdline, "board=750Gr3") ||
 	    strstr(arcs_cmdline, "board=951G") ||
 	    strstr(arcs_cmdline, "board=2011L") ||
-	    strstr(arcs_cmdline, "board=711Gr100"))
+	    strstr(arcs_cmdline, "board=711Gr100") ||
+	    strstr(arcs_cmdline, "board=922gs"))
 		ath79_prom_append_cmdline("console", "ttyS0,115200");
 }
 
