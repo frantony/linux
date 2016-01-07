@@ -98,6 +98,13 @@ config SOC_QCA955X
 	select PCI_AR724X if PCI
 	def_bool n
 
+config ATH79_DEV_M25P80
+	select ATH79_DEV_SPI
+	def_bool n
+
+config ATH79_DEV_ETH
+	def_bool n
+
 config PCI_AR724X
 	def_bool n
 
