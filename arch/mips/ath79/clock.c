@@ -156,6 +156,10 @@ static void __init ar913x_clocks_init(void)
 	clk_add_alias("uart", NULL, "ahb", NULL);
 }
 
+#include <dt-bindings/clock/ar933x-clk.h>
+
+static struct clk *ar933x_clks[AR933X_CLK_END];
+
 static void __init ar933x_clocks_init(void)
 {
 	unsigned long ref_rate;
@@ -166,6 +170,9 @@ static void __init ar933x_clocks_init(void)
 	u32 cpu_config;
 	u32 freq;
 	u32 t;
+
+	clk_data.clks = ar933x_clks;
+	clk_data.clk_num = AR933X_CLK_END;
 
 	t = ath79_reset_rr(AR933X_RESET_REG_BOOTSTRAP);
 	if (t & AR933X_BOOTSTRAP_REF_CLK_40)
@@ -209,13 +216,12 @@ static void __init ar933x_clocks_init(void)
 		ahb_rate = freq / t;
 	}
 
-	ath79_add_sys_clkdev("ref", ref_rate);
-	clks[0] = ath79_add_sys_clkdev("cpu", cpu_rate);
-	clks[1] = ath79_add_sys_clkdev("ddr", ddr_rate);
-	clks[2] = ath79_add_sys_clkdev("ahb", ahb_rate);
-
-	clk_add_alias("wdt", NULL, "ahb", NULL);
-	clk_add_alias("uart", NULL, "ref", NULL);
+	ar933x_clks[AR933X_CLK_REF] = ath79_add_sys_clkdev("ref", ref_rate);
+	ar933x_clks[AR933X_CLK_CPU] = ath79_add_sys_clkdev("cpu", cpu_rate);
+	ar933x_clks[AR933X_CLK_DDR] = ath79_add_sys_clkdev("ddr", ddr_rate);
+	ar933x_clks[AR933X_CLK_AHB] = ath79_add_sys_clkdev("ahb", ahb_rate);
+	ar933x_clks[AR933X_CLK_WDT] = ath79_add_sys_clkdev("wdt", ahb_rate);
+	ar933x_clks[AR933X_CLK_UART] = ath79_add_sys_clkdev("uart", ref_rate);
 }
 
 static u32 __init ar934x_get_pll_freq(u32 ref, u32 ref_div, u32 nint, u32 nfrac,
