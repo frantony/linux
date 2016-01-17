@@ -81,6 +81,11 @@ choice
 		bool "TL-WR1043ND Version 1"
 		select BUILTIN_DTB
 		select SOC_AR913X
+
+	config DTB_TL_MR3020
+		bool "TL-MR3020"
+		select BUILTIN_DTB
+		select SOC_AR933X
 endchoice
 
 endmenu
