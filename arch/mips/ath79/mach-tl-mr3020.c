@@ -36,13 +36,8 @@
 #define TL_MR3020_KEYS_POLL_INTERVAL	20	/* msecs */
 #define TL_MR3020_KEYS_DEBOUNCE_INTERVAL	(3 * TL_MR3020_KEYS_POLL_INTERVAL)
 
-static const char *tl_mr3020_part_probes[] = {
-	"tp-link",
-	NULL,
-};
-
 static struct flash_platform_data tl_mr3020_flash_data = {
-	.part_probes	= tl_mr3020_part_probes,
+	.name = "ar7240-nor0",
 };
 
 static struct gpio_led tl_mr3020_leds_gpio[] __initdata = {
