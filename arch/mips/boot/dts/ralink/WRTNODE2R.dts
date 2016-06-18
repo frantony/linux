@@ -6,6 +6,11 @@
 	compatible = "mediatek,wrtnode2r", "mediatek,mt7628an-soc";
 	model = "WRTnode2R";
 
+	chosen {
+		bootargs = "console=ttyS0,115200 root=/dev/ram rw";
+		stdout-path = &uartlite;
+	};
+
 	gpio-leds {
 		compatible = "gpio-leds";
 
@@ -23,4 +28,12 @@
 			ralink,function = "gpio";
 		};
 	};
+};
+
+&uartlite {
+	status = "okay";
+};
+
+&uart1 {
+	status = "disabled";
 };
