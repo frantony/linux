@@ -80,6 +80,9 @@ FEXPORT(__kernel_entry)
 	j	kernel_entry
 #endif
 
+	.ascii  "OWRTDTB:"
+	EXPORT(__image_dtb)
+	.fill   0x4000
 	__REF
 
 NESTED(kernel_entry, 16, sp)			# kernel entry point
