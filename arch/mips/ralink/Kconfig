@@ -87,6 +87,10 @@ choice
 		depends on SOC_MT7620
 		select BUILTIN_DTB
 
+	config DTB_WRTNODE2R
+		bool "WRTnode2R"
+		depends on SOC_MT7620
+
 	config DTB_MT7621_EVAL
 		bool "MT7621 eval kit"
 		depends on SOC_MT7621
