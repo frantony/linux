@@ -109,3 +109,35 @@
 		function = "gpio_out";
 	};
 };
+
+&pio {
+	ledg11: ledg11 {
+		pins = "PG11";
+		function = "gpio_out";
+	};
+};
+
+/ {
+	leds2 {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&ledg11>;
+
+		statusg11 {
+			label = "nanopi:red:status";
+			gpios = <&pio 6 11 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+		};
+	};
+
+	r_gpio_keys2 {
+		compatible = "gpio-keys";
+		input-name = "l11";
+
+		l11 {
+			label = "l11";
+			linux,code = <KEY_POWER>;
+			gpios = <&r_pio 0 11 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
