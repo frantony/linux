@@ -39,6 +39,7 @@
 #define NVRAM_HEADER			0x48534C46	/* FLSH */
 #define POT_MAGIC1			0x54544f50	/* POTT */
 #define POT_MAGIC2			0x504f		/* OP */
+#define T_METER_MAGIC			0x4D540000	/* MT */
 #define ML_MAGIC1			0x39685a42
 #define ML_MAGIC2			0x26594131
 #define TRX_MAGIC			0x30524448
@@ -183,9 +184,20 @@ static int bcm47xxpart_parse(struct mtd_info *master,
 			continue;
 		}
 
+		/* T_Meter */
+		if ((le32_to_cpu(buf[0x000 / 4]) & 0xFFFF0000) == T_METER_MAGIC &&
+		    (le32_to_cpu(buf[0x030 / 4]) & 0xFFFF0000) == T_METER_MAGIC &&
+		    (le32_to_cpu(buf[0x060 / 4]) & 0xFFFF0000) == T_METER_MAGIC) {
+			bcm47xxpart_add_part(&parts[curr_part++], "T_Meter", offset,
+					     MTD_WRITEABLE);
+			continue;
+		}
+
 		/* TRX */
 		if (buf[0x000 / 4] == TRX_MAGIC) {
 			struct trx_header *trx;
+			uint32_t last_subpart;
+			uint32_t trx_size;
 
 			if (trx_num >= ARRAY_SIZE(trx_parts))
 				pr_warn("No enough space to store another TRX found at 0x%X\n",
@@ -195,11 +207,23 @@ static int bcm47xxpart_parse(struct mtd_info *master,
 			bcm47xxpart_add_part(&parts[curr_part++], "firmware",
 					     offset, 0);
 
-			/* Jump to the end of TRX */
+			/*
+			 * Try to find TRX size. The "length" field isn't fully
+			 * reliable as it could be decreased to make CRC32 cover
+			 * only part of TRX data. It's commonly used as checksum
+			 * can't cover e.g. ever-changing rootfs partition.
+			 * Use offsets as helpers for assuming min TRX size.
+			 */
 			trx = (struct trx_header *)buf;
-			offset = roundup(offset + trx->length, blocksize);
-			/* Next loop iteration will increase the offset */
-			offset -= blocksize;
+			last_subpart = max3(trx->offset[0], trx->offset[1],
+					    trx->offset[2]);
+			trx_size = max(trx->length, last_subpart + blocksize);
+
+			/*
+			 * Skip the TRX data. Decrease offset by block size as
+			 * the next loop iteration will increase it.
+			 */
+			offset += roundup(trx_size, blocksize) - blocksize;
 			continue;
 		}
 
@@ -290,9 +314,16 @@ static int bcm47xxpart_parse(struct mtd_info *master,
 	return curr_part;
 };
 
+static const struct of_device_id bcm47xxpart_of_match_table[] = {
+	{ .compatible = "brcm,bcm947xx-cfe-partitions" },
+	{},
+};
+MODULE_DEVICE_TABLE(of, bcm47xxpart_of_match_table);
+
 static struct mtd_part_parser bcm47xxpart_mtd_parser = {
 	.parse_fn = bcm47xxpart_parse,
 	.name = "bcm47xxpart",
+	.of_match_table = bcm47xxpart_of_match_table,
 };
 module_mtd_part_parser(bcm47xxpart_mtd_parser);
 

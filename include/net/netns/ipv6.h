@@ -69,6 +69,7 @@ struct netns_ipv6 {
 #ifdef CONFIG_IPV6_MULTIPLE_TABLES
 	bool			 fib6_has_custom_rules;
 	struct rt6_info         *ip6_prohibit_entry;
+	struct rt6_info		*ip6_policy_failed_entry;
 	struct rt6_info         *ip6_blk_hole_entry;
 	struct fib6_table       *fib6_local_tbl;
 	struct fib_rules_ops    *fib6_rules_ops;

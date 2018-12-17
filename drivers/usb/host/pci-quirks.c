@@ -124,6 +124,8 @@ struct amd_chipset_type {
 	u8 rev;
 };
 
+#ifndef CONFIG_PCI_DISABLE_COMMON_QUIRKS
+
 static struct amd_chipset_info {
 	struct pci_dev	*nb_dev;
 	struct pci_dev	*smbus_dev;
@@ -620,6 +622,10 @@ bool usb_amd_pt_check_port(struct device *device, int port)
 }
 EXPORT_SYMBOL_GPL(usb_amd_pt_check_port);
 
+#endif /* CONFIG_PCI_DISABLE_COMMON_QUIRKS */
+
+#if IS_ENABLED(CONFIG_USB_UHCI_HCD)
+
 /*
  * Make sure the controller is completely inactive, unable to
  * generate interrupts or do DMA.
@@ -699,7 +705,16 @@ reset_needed:
 	uhci_reset_hc(pdev, base);
 	return 1;
 }
+#else
+int uhci_check_and_reset_hc(struct pci_dev *pdev, unsigned long base)
+{
+	return 0;
+}
+
+#endif
 EXPORT_SYMBOL_GPL(uhci_check_and_reset_hc);
+
+#ifndef CONFIG_PCI_DISABLE_COMMON_QUIRKS
 
 static inline int io_type_enabled(struct pci_dev *pdev, unsigned int mask)
 {
@@ -1287,3 +1302,4 @@ bool usb_xhci_needs_pci_reset(struct pci_dev *pdev)
 	return false;
 }
 EXPORT_SYMBOL_GPL(usb_xhci_needs_pci_reset);
+#endif

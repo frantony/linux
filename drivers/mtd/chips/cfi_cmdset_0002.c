@@ -811,7 +811,7 @@ static int get_chip(struct map_info *map, struct flchip *chip, unsigned long adr
 		return 0;
 
 	case FL_ERASING:
-		if (!cfip || !(cfip->EraseSuspend & (0x1|0x2)) ||
+		if (1 /* no suspend */ || !cfip || !(cfip->EraseSuspend & (0x1|0x2)) ||
 		    !(mode == FL_READY || mode == FL_POINT ||
 		    (mode == FL_WRITING && (cfip->EraseSuspend & 0x2))))
 			goto sleep;
@@ -1635,8 +1635,8 @@ static int __xipram do_write_oneword(struct map_info *map, struct flchip *chip,
 			break;
 		}
 
-		if (chip_ready(map, adr))
-			break;
+		if (chip_good(map, adr, datum))
+			goto enable_xip;
 
 		/* Latency issues. Drop the lock, wait a while and retry */
 		UDELAY(map, chip, adr, 1);
@@ -1652,6 +1652,8 @@ static int __xipram do_write_oneword(struct map_info *map, struct flchip *chip,
 
 		ret = -EIO;
 	}
+
+ enable_xip:
 	xip_enable(map, chip, adr);
  op_done:
 	if (mode == FL_OTP_WRITE)
@@ -1833,6 +1835,7 @@ static int __xipram do_write_buffer(struct map_info *map, struct flchip *chip,
 
 	/* Write Buffer Load */
 	map_write(map, CMD(0x25), cmd_adr);
+	(void) map_read(map, cmd_adr);
 
 	chip->state = FL_WRITING_TO_BUFFER;
 
@@ -2229,7 +2232,6 @@ static int cfi_amdstd_panic_write(struct mtd_info *mtd, loff_t to, size_t len,
 	return 0;
 }
 
-
 /*
  * Handle devices with one erase region, that only implement
  * the chip erase command.
@@ -2297,7 +2299,7 @@ static int __xipram do_erase_chip(struct map_info *map, struct flchip *chip)
 		}
 
 		if (chip_good(map, adr, map_word_ff(map)))
-			break;
+			goto op_done;
 
 		if (time_after(jiffies, timeo)) {
 			printk(KERN_WARNING "MTD %s(): software timeout\n",
@@ -2321,6 +2323,7 @@ static int __xipram do_erase_chip(struct map_info *map, struct flchip *chip)
 		}
 	}
 
+ op_done:
 	chip->state = FL_READY;
 	xip_enable(map, chip, adr);
 	DISABLE_VPP(map);
@@ -2394,7 +2397,7 @@ static int __xipram do_erase_oneblock(struct map_info *map, struct flchip *chip,
 
 		if (chip_good(map, adr, map_word_ff(map))) {
 			xip_enable(map, chip, adr);
-			break;
+			goto op_done;
 		}
 
 		if (time_after(jiffies, timeo)) {
@@ -2420,6 +2423,7 @@ static int __xipram do_erase_oneblock(struct map_info *map, struct flchip *chip,
 		}
 	}
 
+ op_done:
 	chip->state = FL_READY;
 	DISABLE_VPP(map);
 	put_chip(map, chip, adr);

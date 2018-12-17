@@ -112,16 +112,15 @@ static int w1_gpio_probe_dt(struct platform_device *pdev)
 static int w1_gpio_probe(struct platform_device *pdev)
 {
 	struct w1_bus_master *master;
-	struct w1_gpio_platform_data *pdata;
+	struct w1_gpio_platform_data *pdata = dev_get_platdata(&pdev->dev);
 	int err;
 
-	if (of_have_populated_dt()) {
+	if (of_have_populated_dt() && !pdata) {
 		err = w1_gpio_probe_dt(pdev);
 		if (err < 0)
 			return err;
+		pdata = dev_get_platdata(&pdev->dev);
 	}
-
-	pdata = dev_get_platdata(&pdev->dev);
 
 	if (!pdata) {
 		dev_err(&pdev->dev, "No configuration data\n");

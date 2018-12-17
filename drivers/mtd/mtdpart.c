@@ -29,9 +29,15 @@
 #include <linux/kmod.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
+#include <linux/magic.h>
+#include <linux/of.h>
 #include <linux/err.h>
+#include <linux/of.h>
 
 #include "mtdcore.h"
+#include "mtdsplit/mtdsplit.h"
+
+#define MTD_ERASE_PARTIAL	0x8000 /* partition only covers parts of an erase block */
 
 /* Our partition linked list */
 static LIST_HEAD(mtd_partitions);
@@ -51,6 +57,12 @@ struct mtd_part {
 	struct list_head list;
 };
 
+static void mtd_partition_split(struct mtd_info *master, struct mtd_part *part);
+static int parse_mtd_partitions_by_type(struct mtd_info *master,
+					enum mtd_parser_type type,
+					const struct mtd_partition **pparts,
+					struct mtd_part_parser_data *data);
+
 /*
  * Given a pointer to the MTD object in the mtd_part structure, we can retrieve
  * the pointer to that structure.
@@ -60,6 +72,15 @@ static inline struct mtd_part *mtd_to_part(const struct mtd_info *mtd)
 	return container_of(mtd, struct mtd_part, mtd);
 }
 
+static u64 part_absolute_offset(struct mtd_info *mtd)
+{
+	struct mtd_part *part = mtd_to_part(mtd);
+
+	if (!mtd_is_partition(mtd))
+		return 0;
+
+	return part_absolute_offset(part->parent) + part->offset;
+}
 
 /*
  * MTD methods which simply translate the effective address and pass through
@@ -236,13 +257,61 @@ static int part_erase(struct mtd_info *mtd, struct erase_info *instr)
 	struct mtd_part *part = mtd_to_part(mtd);
 	int ret;
 
+
+	instr->partial_start = false;
+	if (mtd->flags & MTD_ERASE_PARTIAL) {
+		size_t readlen = 0;
+		u64 mtd_ofs;
+
+		instr->erase_buf = kmalloc(part->parent->erasesize, GFP_ATOMIC);
+		if (!instr->erase_buf)
+			return -ENOMEM;
+
+		mtd_ofs = part->offset + instr->addr;
+		instr->erase_buf_ofs = do_div(mtd_ofs, part->parent->erasesize);
+
+		if (instr->erase_buf_ofs > 0) {
+			instr->addr -= instr->erase_buf_ofs;
+			ret = mtd_read(part->parent,
+				instr->addr + part->offset,
+				part->parent->erasesize,
+				&readlen, instr->erase_buf);
+
+			instr->len += instr->erase_buf_ofs;
+			instr->partial_start = true;
+		} else {
+			mtd_ofs = part->offset + part->mtd.size;
+			instr->erase_buf_ofs = part->parent->erasesize -
+				do_div(mtd_ofs, part->parent->erasesize);
+
+			if (instr->erase_buf_ofs > 0) {
+				instr->len += instr->erase_buf_ofs;
+				ret = mtd_read(part->parent,
+					part->offset + instr->addr +
+					instr->len - part->parent->erasesize,
+					part->parent->erasesize, &readlen,
+					instr->erase_buf);
+			} else {
+				ret = 0;
+			}
+		}
+		if (ret < 0) {
+			kfree(instr->erase_buf);
+			return ret;
+		}
+
+	}
+
 	instr->addr += part->offset;
 	ret = part->parent->_erase(part->parent, instr);
 	if (ret) {
 		if (instr->fail_addr != MTD_FAIL_ADDR_UNKNOWN)
 			instr->fail_addr -= part->offset;
 		instr->addr -= part->offset;
+		if (mtd->flags & MTD_ERASE_PARTIAL)
+			kfree(instr->erase_buf);
 	}
+
 	return ret;
 }
 
@@ -250,6 +319,25 @@ void mtd_erase_callback(struct erase_info *instr)
 {
 	if (instr->mtd->_erase == part_erase) {
 		struct mtd_part *part = mtd_to_part(instr->mtd);
+		size_t wrlen = 0;
+
+		if (instr->mtd->flags & MTD_ERASE_PARTIAL) {
+			if (instr->partial_start) {
+				part->parent->_write(part->parent,
+					instr->addr, instr->erase_buf_ofs,
+					&wrlen, instr->erase_buf);
+				instr->addr += instr->erase_buf_ofs;
+			} else {
+				instr->len -= instr->erase_buf_ofs;
+				part->parent->_write(part->parent,
+					instr->addr + instr->len,
+					instr->erase_buf_ofs, &wrlen,
+					instr->erase_buf +
+					part->parent->erasesize -
+					instr->erase_buf_ofs);
+			}
+			kfree(instr->erase_buf);
+		}
 
 		if (instr->fail_addr != MTD_FAIL_ADDR_UNKNOWN)
 			instr->fail_addr -= part->offset;
@@ -269,7 +357,16 @@ static int part_lock(struct mtd_info *mtd, loff_t ofs, uint64_t len)
 static int part_unlock(struct mtd_info *mtd, loff_t ofs, uint64_t len)
 {
 	struct mtd_part *part = mtd_to_part(mtd);
-	return part->parent->_unlock(part->parent, ofs + part->offset, len);
+
+	ofs += part->offset;
+
+	if (mtd->flags & MTD_ERASE_PARTIAL) {
+		/* round up len to next erasesize and round down offset to prev block */
+		len = (mtd_div_by_eb(len, part->parent) + 1) * part->parent->erasesize;
+		ofs &= ~(part->parent->erasesize - 1);
+	}
+
+	return part->parent->_unlock(part->parent, ofs, len);
 }
 
 static int part_is_locked(struct mtd_info *mtd, loff_t ofs, uint64_t len)
@@ -369,35 +466,6 @@ static inline void free_partition(struct mtd_part *p)
 	kfree(p);
 }
 
-/**
- * mtd_parse_part - parse MTD partition looking for subpartitions
- *
- * @slave: part that is supposed to be a container and should be parsed
- * @types: NULL-terminated array with names of partition parsers to try
- *
- * Some partitions are kind of containers with extra subpartitions (volumes).
- * There can be various formats of such containers. This function tries to use
- * specified parsers to analyze given partition and registers found
- * subpartitions on success.
- */
-static int mtd_parse_part(struct mtd_part *slave, const char *const *types)
-{
-	struct mtd_partitions parsed;
-	int err;
-
-	err = parse_mtd_partitions(&slave->mtd, types, &parsed, NULL);
-	if (err)
-		return err;
-	else if (!parsed.nr_parts)
-		return -ENOENT;
-
-	err = add_mtd_partitions(&slave->mtd, parsed.parts, parsed.nr_parts);
-
-	mtd_part_parser_cleanup(&parsed);
-
-	return err;
-}
-
 static struct mtd_part *allocate_partition(struct mtd_info *parent,
 			const struct mtd_partition *part, int partno,
 			uint64_t cur_offset)
@@ -422,7 +490,8 @@ static struct mtd_part *allocate_partition(struct mtd_info *parent,
 
 	/* set up the MTD object for this partition */
 	slave->mtd.type = parent->type;
-	slave->mtd.flags = parent->flags & ~part->mask_flags;
+	slave->mtd.flags = parent->orig_flags & ~part->mask_flags;
+	slave->mtd.orig_flags = slave->mtd.flags;
 	slave->mtd.size = part->size;
 	slave->mtd.writesize = parent->writesize;
 	slave->mtd.writebufsize = parent->writebufsize;
@@ -589,23 +658,26 @@ static struct mtd_part *allocate_partition(struct mtd_info *parent,
 	if (!(slave->mtd.flags & MTD_NO_ERASE))
 		wr_alignment = slave->mtd.erasesize;
 
-	tmp = slave->offset;
+	tmp = part_absolute_offset(parent) + slave->offset;
 	remainder = do_div(tmp, wr_alignment);
 	if ((slave->mtd.flags & MTD_WRITEABLE) && remainder) {
 		/* Doesn't start on a boundary of major erase size */
-		/* FIXME: Let it be writable if it is on a boundary of
-		 * _minor_ erase size though */
-		slave->mtd.flags &= ~MTD_WRITEABLE;
-		printk(KERN_WARNING"mtd: partition \"%s\" doesn't start on an erase/write block boundary -- force read-only\n",
-			part->name);
+		slave->mtd.flags |= MTD_ERASE_PARTIAL;
+		if (((u32)slave->mtd.size) > parent->erasesize)
+			slave->mtd.flags &= ~MTD_WRITEABLE;
+		else
+			slave->mtd.erasesize = slave->mtd.size;
 	}
 
-	tmp = slave->mtd.size;
+	tmp = part_absolute_offset(parent) + slave->offset + slave->mtd.size;
 	remainder = do_div(tmp, wr_alignment);
 	if ((slave->mtd.flags & MTD_WRITEABLE) && remainder) {
-		slave->mtd.flags &= ~MTD_WRITEABLE;
-		printk(KERN_WARNING"mtd: partition \"%s\" doesn't end on an erase/write block -- force read-only\n",
-			part->name);
+		slave->mtd.flags |= MTD_ERASE_PARTIAL;
+
+		if ((u32)slave->mtd.size > parent->erasesize)
+			slave->mtd.flags &= ~MTD_WRITEABLE;
+		else
+			slave->mtd.erasesize = slave->mtd.size;
 	}
 
 	mtd_set_ooblayout(&slave->mtd, &part_ooblayout_ops);
@@ -685,6 +757,7 @@ int mtd_add_partition(struct mtd_info *parent, const char *name,
 	mutex_unlock(&mtd_partitions_mutex);
 
 	add_mtd_device(&new->mtd);
+	mtd_partition_split(parent, new);
 
 	mtd_add_partition_attrs(new);
 
@@ -763,6 +836,66 @@ int mtd_del_partition(struct mtd_info *mtd, int partno)
 }
 EXPORT_SYMBOL_GPL(mtd_del_partition);
 
+static int
+run_parsers_by_type(struct mtd_part *slave, enum mtd_parser_type type)
+{
+	struct mtd_partition *parts;
+	int nr_parts;
+	int i;
+
+	nr_parts = parse_mtd_partitions_by_type(&slave->mtd, type, (const struct mtd_partition **)&parts,
+						NULL);
+	if (nr_parts <= 0)
+		return nr_parts;
+
+	if (WARN_ON(!parts))
+		return 0;
+
+	for (i = 0; i < nr_parts; i++) {
+		/* adjust partition offsets */
+		parts[i].offset += slave->offset;
+
+		mtd_add_partition(slave->parent,
+				  parts[i].name,
+				  parts[i].offset,
+				  parts[i].size);
+	}
+
+	kfree(parts);
+
+	return nr_parts;
+}
+
+#ifdef CONFIG_MTD_SPLIT_FIRMWARE_NAME
+#define SPLIT_FIRMWARE_NAME	CONFIG_MTD_SPLIT_FIRMWARE_NAME
+#else
+#define SPLIT_FIRMWARE_NAME	"unused"
+#endif
+
+static void split_firmware(struct mtd_info *master, struct mtd_part *part)
+{
+	run_parsers_by_type(part, MTD_PARSER_TYPE_FIRMWARE);
+}
+
+static void mtd_partition_split(struct mtd_info *master, struct mtd_part *part)
+{
+	static int rootfs_found = 0;
+
+	if (rootfs_found)
+		return;
+
+	if (!strcmp(part->mtd.name, "rootfs")) {
+		run_parsers_by_type(part, MTD_PARSER_TYPE_ROOTFS);
+
+		rootfs_found = 1;
+	}
+
+	if (IS_ENABLED(CONFIG_MTD_SPLIT_FIRMWARE) &&
+	    !strcmp(part->mtd.name, SPLIT_FIRMWARE_NAME) &&
+	    !of_find_property(mtd_get_of_node(&part->mtd), "compatible", NULL))
+		split_firmware(master, part);
+}
+
 /*
  * This function, given a master MTD object and a partition table, creates
  * and registers slave MTD objects which are bound to the master according to
@@ -794,9 +927,10 @@ int add_mtd_partitions(struct mtd_info *master,
 		mutex_unlock(&mtd_partitions_mutex);
 
 		add_mtd_device(&slave->mtd);
+		mtd_partition_split(master, slave);
 		mtd_add_partition_attrs(slave);
-		if (parts[i].types)
-			mtd_parse_part(slave, parts[i].types);
+		/* Look for subpartitions */
+		parse_mtd_partitions(&slave->mtd, parts[i].types, NULL);
 
 		cur_offset = slave->offset + slave->mtd.size;
 	}
@@ -862,12 +996,49 @@ void deregister_mtd_parser(struct mtd_part_parser *p)
 }
 EXPORT_SYMBOL_GPL(deregister_mtd_parser);
 
+#include <linux/version.h>
+
+/*
+ * Parses the linux,part-probe device tree property.
+ * When a non null value is returned it has to be freed with kfree() by
+ * the caller.
+ */
+static const char * const *of_get_probes(struct device_node *dp)
+{
+	const char **res;
+	int count;
+
+	count = of_property_count_strings(dp, "linux,part-probe");
+	if (count < 0)
+		return NULL;
+
+	res = kzalloc((count + 1) * sizeof(*res), GFP_KERNEL);
+	if (!res)
+		return NULL;
+
+	count = of_property_read_string_array(dp, "linux,part-probe", res,
+					      count);
+	if (count < 0)
+		return NULL;
+
+	pr_warn("Support for the generic \"linux,part-probe\" has been deprecated and will be removed soon");
+	BUILD_BUG_ON(LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0));
+
+	return res;
+}
+
 /*
  * Do not forget to update 'parse_mtd_partitions()' kerneldoc comment if you
  * are changing this array!
  */
 static const char * const default_mtd_part_types[] = {
 	"cmdlinepart",
+	"ofpart",
+	NULL
+};
+
+/* Check DT only when looking for subpartitions. */
+static const char * const default_subpartition_types[] = {
 	"ofpart",
 	NULL
 };
@@ -894,50 +1065,158 @@ static int mtd_part_do_parse(struct mtd_part_parser *parser,
 }
 
 /**
- * parse_mtd_partitions - parse MTD partitions
+ * mtd_part_get_compatible_parser - find MTD parser by a compatible string
+ *
+ * @compat: compatible string describing partitions in a device tree
+ *
+ * MTD parsers can specify supported partitions by providing a table of
+ * compatibility strings. This function finds a parser that advertises support
+ * for a passed value of "compatible".
+ */
+static struct mtd_part_parser *mtd_part_get_compatible_parser(const char *compat)
+{
+	struct mtd_part_parser *p, *ret = NULL;
+
+	spin_lock(&part_parser_lock);
+
+	list_for_each_entry(p, &part_parsers, list) {
+		const struct of_device_id *matches;
+
+		matches = p->of_match_table;
+		if (!matches)
+			continue;
+
+		for (; matches->compatible[0]; matches++) {
+			if (!strcmp(matches->compatible, compat) &&
+			    try_module_get(p->owner)) {
+				ret = p;
+				break;
+			}
+		}
+
+		if (ret)
+			break;
+	}
+
+	spin_unlock(&part_parser_lock);
+
+	return ret;
+}
+
+static int mtd_part_of_parse(struct mtd_info *master,
+			     struct mtd_partitions *pparts)
+{
+	struct mtd_part_parser *parser;
+	struct device_node *np;
+	struct property *prop;
+	const char *compat;
+	const char *fixed = "fixed-partitions";
+	int ret, err = 0;
+
+	np = mtd_get_of_node(master);
+	if (!mtd_is_partition(master))
+		np = of_get_child_by_name(np, "partitions");
+	of_property_for_each_string(np, "compatible", prop, compat) {
+		parser = mtd_part_get_compatible_parser(compat);
+		if (!parser)
+			continue;
+		ret = mtd_part_do_parse(parser, master, pparts, NULL);
+		if (ret > 0) {
+			of_node_put(np);
+			return ret;
+		}
+		mtd_part_parser_put(parser);
+		if (ret < 0 && !err)
+			err = ret;
+	}
+	of_node_put(np);
+
+	/*
+	 * For backward compatibility we have to try the "fixed-partitions"
+	 * parser. It supports old DT format with partitions specified as a
+	 * direct subnodes of a flash device DT node without any compatibility
+	 * specified we could match.
+	 */
+	parser = mtd_part_parser_get(fixed);
+	if (!parser && !request_module("%s", fixed))
+		parser = mtd_part_parser_get(fixed);
+	if (parser) {
+		ret = mtd_part_do_parse(parser, master, pparts, NULL);
+		if (ret > 0)
+			return ret;
+		mtd_part_parser_put(parser);
+		if (ret < 0 && !err)
+			err = ret;
+	}
+
+	return err;
+}
+
+/**
+ * parse_mtd_partitions - parse and register MTD partitions
+ *
  * @master: the master partition (describes whole MTD device)
  * @types: names of partition parsers to try or %NULL
- * @pparts: info about partitions found is returned here
  * @data: MTD partition parser-specific data
  *
- * This function tries to find partition on MTD device @master. It uses MTD
- * partition parsers, specified in @types. However, if @types is %NULL, then
- * the default list of parsers is used. The default list contains only the
+ * This function tries to find & register partitions on MTD device @master. It
+ * uses MTD partition parsers, specified in @types. However, if @types is %NULL,
+ * then the default list of parsers is used. The default list contains only the
  * "cmdlinepart" and "ofpart" parsers ATM.
  * Note: If there are more then one parser in @types, the kernel only takes the
  * partitions parsed out by the first parser.
  *
  * This function may return:
  * o a negative error code in case of failure
- * o zero otherwise, and @pparts will describe the partitions, number of
- *   partitions, and the parser which parsed them. Caller must release
- *   resources with mtd_part_parser_cleanup() when finished with the returned
- *   data.
+ * o number of found partitions otherwise
  */
 int parse_mtd_partitions(struct mtd_info *master, const char *const *types,
-			 struct mtd_partitions *pparts,
 			 struct mtd_part_parser_data *data)
 {
+	struct mtd_partitions pparts = { };
 	struct mtd_part_parser *parser;
 	int ret, err = 0;
+	const char *const *types_of = NULL;
+
+	if (mtd_get_of_node(master)) {
+		types_of = of_get_probes(mtd_get_of_node(master));
+		if (types_of != NULL)
+			types = types_of;
+	}
 
 	if (!types)
-		types = default_mtd_part_types;
+		types = mtd_is_partition(master) ? default_subpartition_types :
+			default_mtd_part_types;
 
 	for ( ; *types; types++) {
-		pr_debug("%s: parsing partitions %s\n", master->name, *types);
-		parser = mtd_part_parser_get(*types);
-		if (!parser && !request_module("%s", *types))
+		/*
+		 * ofpart is a special type that means OF partitioning info
+		 * should be used. It requires a bit different logic so it is
+		 * handled in a separated function.
+		 */
+		if (!strcmp(*types, "ofpart")) {
+			ret = mtd_part_of_parse(master, &pparts);
+		} else {
+			pr_debug("%s: parsing partitions %s\n", master->name,
+				 *types);
 			parser = mtd_part_parser_get(*types);
-		pr_debug("%s: got parser %s\n", master->name,
-			 parser ? parser->name : NULL);
-		if (!parser)
-			continue;
-		ret = mtd_part_do_parse(parser, master, pparts, data);
+			if (!parser && !request_module("%s", *types))
+				parser = mtd_part_parser_get(*types);
+			pr_debug("%s: got parser %s\n", master->name,
+				parser ? parser->name : NULL);
+			if (!parser)
+				continue;
+			ret = mtd_part_do_parse(parser, master, &pparts, data);
+			if (ret <= 0)
+				mtd_part_parser_put(parser);
+		}
 		/* Found partitions! */
-		if (ret > 0)
-			return 0;
-		mtd_part_parser_put(parser);
+		if (ret > 0) {
+			err = add_mtd_partitions(master, pparts.parts,
+						 pparts.nr_parts);
+			mtd_part_parser_cleanup(&pparts);
+			return err ? err : pparts.nr_parts;
+		}
 		/*
 		 * Stash the first error we see; only report it if no parser
 		 * succeeds
@@ -945,6 +1224,7 @@ int parse_mtd_partitions(struct mtd_info *master, const char *const *types,
 		if (ret < 0 && !err)
 			err = ret;
 	}
+	kfree(types_of);
 	return err;
 }
 
@@ -964,6 +1244,61 @@ void mtd_part_parser_cleanup(struct mtd_partitions *parts)
 	}
 }
 
+static struct mtd_part_parser *
+get_partition_parser_by_type(enum mtd_parser_type type,
+			     struct mtd_part_parser *start)
+{
+	struct mtd_part_parser *p, *ret = NULL;
+
+	spin_lock(&part_parser_lock);
+
+	p = list_prepare_entry(start, &part_parsers, list);
+	if (start)
+		mtd_part_parser_put(start);
+
+	list_for_each_entry_continue(p, &part_parsers, list) {
+		if (p->type == type && try_module_get(p->owner)) {
+			ret = p;
+			break;
+		}
+	}
+
+	spin_unlock(&part_parser_lock);
+
+	return ret;
+}
+
+static int parse_mtd_partitions_by_type(struct mtd_info *master,
+					enum mtd_parser_type type,
+					const struct mtd_partition **pparts,
+					struct mtd_part_parser_data *data)
+{
+	struct mtd_part_parser *prev = NULL;
+	int ret = 0;
+
+	while (1) {
+		struct mtd_part_parser *parser;
+
+		parser = get_partition_parser_by_type(type, prev);
+		if (!parser)
+			break;
+
+		ret = (*parser->parse_fn)(master, pparts, data);
+
+		if (ret > 0) {
+			mtd_part_parser_put(parser);
+			printk(KERN_NOTICE
+			       "%d %s partitions found on MTD device %s\n",
+			       ret, parser->name, master->name);
+			break;
+		}
+
+		prev = parser;
+	}
+
+	return ret;
+}
+
 int mtd_is_partition(const struct mtd_info *mtd)
 {
 	struct mtd_part *part;
@@ -980,6 +1315,24 @@ int mtd_is_partition(const struct mtd_info *mtd)
 	return ispart;
 }
 EXPORT_SYMBOL_GPL(mtd_is_partition);
+
+struct mtd_info *mtdpart_get_master(const struct mtd_info *mtd)
+{
+	if (!mtd_is_partition(mtd))
+		return (struct mtd_info *)mtd;
+
+	return mtd_to_part(mtd)->parent;
+}
+EXPORT_SYMBOL_GPL(mtdpart_get_master);
+
+uint64_t mtdpart_get_offset(const struct mtd_info *mtd)
+{
+	if (!mtd_is_partition(mtd))
+		return 0;
+
+	return mtd_to_part(mtd)->offset;
+}
+EXPORT_SYMBOL_GPL(mtdpart_get_offset);
 
 /* Returns the size of the entire flash chip */
 uint64_t mtd_get_device_size(const struct mtd_info *mtd)

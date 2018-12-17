@@ -53,6 +53,14 @@ struct ehci_platform_priv {
 
 static const char hcd_name[] = "ehci-platform";
 
+static void ehci_platform_reset_notifier(struct usb_hcd *hcd)
+{
+	struct platform_device *pdev = to_platform_device(hcd->self.controller);
+	struct usb_ehci_pdata *pdata = pdev->dev.platform_data;
+
+	pdata->reset_notifier(pdev);
+}
+
 static int ehci_platform_reset(struct usb_hcd *hcd)
 {
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
@@ -187,6 +195,11 @@ static int ehci_platform_probe(struct platform_device *dev)
 	ehci = hcd_to_ehci(hcd);
 
 	if (pdata == &ehci_platform_defaults && dev->dev.of_node) {
+		of_property_read_u32(dev->dev.of_node, "caps-offset", &pdata->caps_offset);
+
+		if (of_property_read_bool(dev->dev.of_node, "has-synopsys-hc-bug"))
+			pdata->has_synopsys_hc_bug = 1;
+
 		if (of_property_read_bool(dev->dev.of_node, "big-endian-regs"))
 			ehci->big_endian_mmio = 1;
 
@@ -263,6 +276,15 @@ static int ehci_platform_probe(struct platform_device *dev)
 		hcd->has_tt = 1;
 	if (pdata->reset_on_resume)
 		priv->reset_on_resume = true;
+	if (pdata->ignore_oc)
+		ehci->ignore_oc = 1;
+	if (pdata->qca_force_host_mode)
+		ehci->qca_force_host_mode = 1;
+	if (pdata->qca_force_16bit_ptw)
+		ehci->qca_force_16bit_ptw = 1;
+
+	if (pdata->reset_notifier)
+		ehci->reset_notifier = ehci_platform_reset_notifier;
 
 #ifndef CONFIG_USB_EHCI_BIG_ENDIAN_MMIO
 	if (ehci->big_endian_mmio) {

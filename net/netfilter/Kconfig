@@ -10,7 +10,13 @@ config NETFILTER_INGRESS
 	  infrastructure.
 
 config NETFILTER_NETLINK
-	tristate
+	tristate "Netfilter NFNETLINK interface"
+
+config NETFILTER_FAMILY_BRIDGE
+	bool
+
+config NETFILTER_FAMILY_ARP
+	bool
 
 config NETFILTER_NETLINK_ACCT
 tristate "Netfilter NFACCT over NFNETLINK interface"
@@ -118,6 +124,18 @@ config NF_CONNTRACK_EVENTS
 
 	  If unsure, say `N'.
 
+config NF_CONNTRACK_RTCACHE
+	tristate "Cache route entries in conntrack objects"
+	depends on NETFILTER_ADVANCED
+	depends on NF_CONNTRACK
+	help
+	  If this option is enabled, the connection tracking code will
+	  cache routing information for each connection that is being
+	  forwarded, at a cost of 32 bytes per conntrack object.
+
+	  To compile it as a module, choose M here.  If unsure, say N.
+	  The module will be called nf_conntrack_rtcache.
+
 config NF_CONNTRACK_TIMEOUT
 	bool  'Connection tracking timeout'
 	depends on NETFILTER_ADVANCED
@@ -211,7 +229,6 @@ config NF_CONNTRACK_FTP
 
 config NF_CONNTRACK_H323
 	tristate "H.323 protocol support"
-	depends on IPV6 || IPV6=n
 	depends on NETFILTER_ADVANCED
 	help
 	  H.323 is a VoIP signalling protocol from ITU-T. As one of the most
@@ -497,6 +514,13 @@ config NFT_CT
 	  This option adds the "ct" expression that you can use to match
 	  connection tracking information such as the flow state.
 
+config NFT_FLOW_OFFLOAD
+	depends on NF_CONNTRACK
+	tristate "Netfilter nf_tables hardware flow offload module"
+	help
+	  This option adds the "flow_offload" expression that you can use to
+	  choose what flows are placed into the hardware.
+
 config NFT_SET_RBTREE
 	tristate "Netfilter nf_tables rbtree set module"
 	help
@@ -647,7 +671,33 @@ config NFT_FIB_NETDEV
 
 endif # NF_TABLES_NETDEV
 
+config NF_FLOW_TABLE_INET
+	tristate "Netfilter flow table mixed IPv4/IPv6 module"
+	depends on NF_FLOW_TABLE
+	help
+          This option adds the flow table mixed IPv4/IPv6 support.
+
+	  To compile it as a module, choose M here.
+
 endif # NF_TABLES
+
+config NF_FLOW_TABLE
+	tristate "Netfilter flow table module"
+	depends on NETFILTER_INGRESS
+	depends on NF_CONNTRACK
+	help
+	  This option adds the flow table core infrastructure.
+
+	  To compile it as a module, choose M here.
+
+config NF_FLOW_TABLE_HW
+	tristate "Netfilter flow table hardware offload module"
+	depends on NF_FLOW_TABLE
+	help
+	  This option adds hardware offload support for the flow table core
+	  infrastructure.
+
+	  To compile it as a module, choose M here.
 
 config NETFILTER_XTABLES
 	tristate "Netfilter Xtables support (required for ip_tables)"
@@ -923,6 +973,15 @@ config NETFILTER_XT_TARGET_NOTRACK
 	depends on NETFILTER_ADVANCED
 	select NETFILTER_XT_TARGET_CT
 
+config NETFILTER_XT_TARGET_FLOWOFFLOAD
+	tristate '"FLOWOFFLOAD" target support'
+	depends on NF_FLOW_TABLE
+	depends on NETFILTER_INGRESS
+	help
+	  This option adds a `FLOWOFFLOAD' target, which uses the nf_flow_offload
+	  module to speed up processing of packets by bypassing the usual
+	  netfilter chains
+
 config NETFILTER_XT_TARGET_RATEEST
 	tristate '"RATEEST" target support'
 	depends on NETFILTER_ADVANCED
@@ -1000,7 +1059,6 @@ config NETFILTER_XT_TARGET_SECMARK
 
 config NETFILTER_XT_TARGET_TCPMSS
 	tristate '"TCPMSS" target support'
-	depends on IPV6 || IPV6=n
 	default m if NETFILTER_ADVANCED=n
 	---help---
 	  This option adds a `TCPMSS' target, which allows you to alter the

@@ -72,8 +72,17 @@ endif # NF_TABLES_IPV4
 
 config NF_TABLES_ARP
 	tristate "ARP nf_tables support"
+	select NETFILTER_FAMILY_ARP
 	help
 	  This option enables the ARP support for nf_tables.
+
+config NF_FLOW_TABLE_IPV4
+	tristate "Netfilter flow table IPv4 module"
+	depends on NF_FLOW_TABLE
+	help
+	  This option adds the flow table IPv4 support.
+
+	  To compile it as a module, choose M here.
 
 endif # NF_TABLES
 
@@ -392,6 +401,7 @@ endif # IP_NF_IPTABLES
 config IP_NF_ARPTABLES
 	tristate "ARP tables support"
 	select NETFILTER_XTABLES
+	select NETFILTER_FAMILY_ARP
 	depends on NETFILTER_ADVANCED
 	help
 	  arptables is a general, extensible packet identification framework.

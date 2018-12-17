@@ -54,6 +54,16 @@
 #define LOAD_OFFSET 0
 #endif
 
+#ifndef SYMTAB_KEEP
+#define SYMTAB_KEEP KEEP(*(SORT(___ksymtab+*)))
+#define SYMTAB_KEEP_GPL KEEP(*(SORT(___ksymtab_gpl+*)))
+#endif
+
+#ifndef SYMTAB_DISCARD
+#define SYMTAB_DISCARD
+#define SYMTAB_DISCARD_GPL
+#endif
+
 #include <linux/export.h>
 
 /* Align . to a 8 byte boundary equals to maximum function alignment. */
@@ -105,7 +115,7 @@
 #ifdef CONFIG_FTRACE_MCOUNT_RECORD
 #define MCOUNT_REC()	. = ALIGN(8);				\
 			VMLINUX_SYMBOL(__start_mcount_loc) = .; \
-			*(__mcount_loc)				\
+			KEEP(*(__mcount_loc))			\
 			VMLINUX_SYMBOL(__stop_mcount_loc) = .;
 #else
 #define MCOUNT_REC()
@@ -113,7 +123,7 @@
 
 #ifdef CONFIG_TRACE_BRANCH_PROFILING
 #define LIKELY_PROFILE()	VMLINUX_SYMBOL(__start_annotated_branch_profile) = .; \
-				*(_ftrace_annotated_branch)			      \
+				KEEP(*(_ftrace_annotated_branch))		      \
 				VMLINUX_SYMBOL(__stop_annotated_branch_profile) = .;
 #else
 #define LIKELY_PROFILE()
@@ -121,7 +131,7 @@
 
 #ifdef CONFIG_PROFILE_ALL_BRANCHES
 #define BRANCH_PROFILE()	VMLINUX_SYMBOL(__start_branch_profile) = .;   \
-				*(_ftrace_branch)			      \
+				KEEP(*(_ftrace_branch))			      \
 				VMLINUX_SYMBOL(__stop_branch_profile) = .;
 #else
 #define BRANCH_PROFILE()
@@ -237,7 +247,8 @@
 	LIKELY_PROFILE()		       				\
 	BRANCH_PROFILE()						\
 	TRACE_PRINTKS()							\
-	TRACEPOINT_STR()
+	TRACEPOINT_STR()                                                \
+	*(.data.[a-zA-Z_]*)
 
 /*
  * Data section helpers
@@ -340,14 +351,14 @@
 	/* Kernel symbol table: Normal symbols */			\
 	__ksymtab         : AT(ADDR(__ksymtab) - LOAD_OFFSET) {		\
 		VMLINUX_SYMBOL(__start___ksymtab) = .;			\
-		KEEP(*(SORT(___ksymtab+*)))				\
+		SYMTAB_KEEP						\
 		VMLINUX_SYMBOL(__stop___ksymtab) = .;			\
 	}								\
 									\
 	/* Kernel symbol table: GPL-only symbols */			\
 	__ksymtab_gpl     : AT(ADDR(__ksymtab_gpl) - LOAD_OFFSET) {	\
 		VMLINUX_SYMBOL(__start___ksymtab_gpl) = .;		\
-		KEEP(*(SORT(___ksymtab_gpl+*)))				\
+		SYMTAB_KEEP_GPL						\
 		VMLINUX_SYMBOL(__stop___ksymtab_gpl) = .;		\
 	}								\
 									\
@@ -409,7 +420,7 @@
 									\
 	/* Kernel symbol table: strings */				\
         __ksymtab_strings : AT(ADDR(__ksymtab_strings) - LOAD_OFFSET) {	\
-		*(__ksymtab_strings)					\
+		*(__ksymtab_strings+*)					\
 	}								\
 									\
 	/* __*init sections */						\
@@ -496,7 +507,7 @@
 #define ENTRY_TEXT							\
 		ALIGN_FUNCTION();					\
 		VMLINUX_SYMBOL(__entry_text_start) = .;			\
-		*(.entry.text)						\
+		KEEP(*(.entry.text))					\
 		VMLINUX_SYMBOL(__entry_text_end) = .;
 
 #define IRQENTRY_TEXT							\
@@ -603,7 +614,7 @@
 	. = ALIGN(sbss_align);						\
 	.sbss : AT(ADDR(.sbss) - LOAD_OFFSET) {				\
 		*(.dynsbss)						\
-		*(.sbss)						\
+		*(.sbss .sbss.*)					\
 		*(.scommon)						\
 	}
 
@@ -792,6 +803,8 @@
 	EXIT_TEXT							\
 	EXIT_DATA							\
 	EXIT_CALL							\
+	SYMTAB_DISCARD							\
+	SYMTAB_DISCARD_GPL						\
 	*(.discard)							\
 	*(.discard.*)							\
 	}

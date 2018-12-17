@@ -114,37 +114,9 @@ static struct mtd_info *obsolete_probe(struct platform_device *dev,
 static const char * const part_probe_types_def[] = {
 	"cmdlinepart", "RedBoot", "ofpart", "ofoldpart", NULL };
 
-static const char * const *of_get_probes(struct device_node *dp)
-{
-	const char **res;
-	int count;
-
-	count = of_property_count_strings(dp, "linux,part-probe");
-	if (count < 0)
-		return part_probe_types_def;
-
-	res = kzalloc((count + 1) * sizeof(*res), GFP_KERNEL);
-	if (!res)
-		return NULL;
-
-	count = of_property_read_string_array(dp, "linux,part-probe", res,
-					      count);
-	if (count < 0)
-		return NULL;
-
-	return res;
-}
-
-static void of_free_probes(const char * const *probes)
-{
-	if (probes != part_probe_types_def)
-		kfree(probes);
-}
-
 static const struct of_device_id of_flash_match[];
 static int of_flash_probe(struct platform_device *dev)
 {
-	const char * const *part_probe_types;
 	const struct of_device_id *match;
 	struct device_node *dp = dev->dev.of_node;
 	struct resource res;
@@ -310,14 +282,8 @@ static int of_flash_probe(struct platform_device *dev)
 
 	info->cmtd->dev.parent = &dev->dev;
 	mtd_set_of_node(info->cmtd, dp);
-	part_probe_types = of_get_probes(dp);
-	if (!part_probe_types) {
-		err = -ENOMEM;
-		goto err_out;
-	}
-	mtd_device_parse_register(info->cmtd, part_probe_types, NULL,
+	mtd_device_parse_register(info->cmtd, part_probe_types_def, NULL,
 			NULL, 0);
-	of_free_probes(part_probe_types);
 
 	kfree(mtd_list);
 

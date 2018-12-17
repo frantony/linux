@@ -1102,6 +1102,9 @@ void phy_detach(struct phy_device *phydev)
 	struct module *ndev_owner = dev->dev.parent->driver->owner;
 	struct mii_bus *bus;
 
+	if (phydev->drv && phydev->drv->detach)
+		phydev->drv->detach(phydev);
+
 	if (phydev->sysfs_links) {
 		sysfs_remove_link(&dev->dev.kobj, "phydev");
 		sysfs_remove_link(&phydev->mdio.dev.kobj, "attached_dev");
@@ -1454,6 +1457,9 @@ EXPORT_SYMBOL(genphy_aneg_done);
 int genphy_update_link(struct phy_device *phydev)
 {
 	int status;
+
+	if (phydev->drv && phydev->drv->update_link)
+		return phydev->drv->update_link(phydev);
 
 	/* Do a fake read */
 	status = phy_read(phydev, MII_BMSR);

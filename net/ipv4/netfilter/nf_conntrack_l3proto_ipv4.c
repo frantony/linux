@@ -48,8 +48,8 @@ static bool ipv4_pkt_to_tuple(const struct sk_buff *skb, unsigned int nhoff,
 	if (ap == NULL)
 		return false;
 
-	tuple->src.u3.ip = ap[0];
-	tuple->dst.u3.ip = ap[1];
+	tuple->src.u3.ip = net_hdr_word(ap++);
+	tuple->dst.u3.ip = net_hdr_word(ap);
 
 	return true;
 }
@@ -154,11 +154,6 @@ static unsigned int ipv4_conntrack_local(void *priv,
 					 struct sk_buff *skb,
 					 const struct nf_hook_state *state)
 {
-	/* root is playing with raw sockets. */
-	if (skb->len < sizeof(struct iphdr) ||
-	    ip_hdrlen(skb) < sizeof(struct iphdr))
-		return NF_ACCEPT;
-
 	if (ip_is_fragment(ip_hdr(skb))) { /* IP_NODEFRAG setsockopt set */
 		enum ip_conntrack_info ctinfo;
 		struct nf_conn *tmpl;

@@ -322,7 +322,11 @@ static struct platform_driver ath79_gpio_driver = {
 	.remove = ath79_gpio_remove,
 };
 
-module_platform_driver(ath79_gpio_driver);
+static int __init ath79_gpio_init(void)
+{
+	return platform_driver_register(&ath79_gpio_driver);
+}
+postcore_initcall(ath79_gpio_init);
 
 MODULE_DESCRIPTION("Atheros AR71XX/AR724X/AR913X GPIO API support");
 MODULE_LICENSE("GPL v2");
