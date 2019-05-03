@@ -29,7 +29,12 @@ static inline void fstate_off(struct task_struct *task,
 static inline void fstate_save(struct task_struct *task,
 			       struct pt_regs *regs)
 {
-	if ((regs->status & SR_FS) == SR_FS_DIRTY) {
+  // JRRK: Hack around buggy support for SR_FS and/or SR_SD
+#if 0  
+	if ((regs->sstatus & SR_FS) == SR_FS_DIRTY) {
+#else          
+	if ((regs->sstatus & SR_FS) != SR_FS_OFF) {
+#endif          
 		__fstate_save(task);
 		__fstate_clean(regs);
 	}
@@ -50,7 +55,10 @@ static inline void __switch_to_aux(struct task_struct *prev,
 	struct pt_regs *regs;
 
 	regs = task_pt_regs(prev);
-	if (unlikely(regs->status & SR_SD))
+  // JRRK: Hack around buggy support for SR_FS and/or SR_SD
+#if 0  
+	if (unlikely(regs->sstatus & SR_SD))
+#endif          
 		fstate_save(prev, regs);
 	fstate_restore(next, task_pt_regs(next));
 }
