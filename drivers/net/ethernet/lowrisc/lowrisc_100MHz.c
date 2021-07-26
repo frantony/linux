@@ -224,7 +224,7 @@ static int lowrisc_set_mac_address(struct net_device *ndev, void *address)
  *
  * This function is called when Tx time out occurs for Ether100MHz device.
  */
-static void lowrisc_tx_timeout(struct net_device *ndev)
+static void lowrisc_tx_timeout(struct net_device *ndev, unsigned int txqueue)
 {
 	struct net_local *priv = netdev_priv(ndev);
 
