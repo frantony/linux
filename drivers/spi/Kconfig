@@ -565,6 +565,11 @@ config SPI_OMAP24XX
 	  SPI master controller for OMAP24XX and later Multichannel SPI
 	  (McSPI) modules.
 
+config SPI_OPENTITAN_QSPI
+    tristate "OpenTitan SPI Host driver"
+    help
+      SPI host controller for the OpenTitan QSPI host
+
 config SPI_TI_QSPI
 	tristate "DRA7xxx QSPI controller support"
 	depends on ARCH_OMAP2PLUS || COMPILE_TEST
